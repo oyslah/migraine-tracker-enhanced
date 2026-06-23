@@ -1,5 +1,8 @@
 import * as React from 'react';
 import Chart from 'chart.js/auto';
+import annotationPlugin from 'chartjs-plugin-annotation';
+
+Chart.register(annotationPlugin);
 
 const ChartComponent = ({ type, data, options }) => {
   const canvasRef = React.useRef(null);

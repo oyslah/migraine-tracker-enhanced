@@ -347,6 +347,7 @@ const App = () => {
               triggers: triggers,
               mohRules: mohRules,
               disabilityLogs: disabilityLogs,
+              lifeChanges: lifeChanges,
             })
         );
       case 'log_settings':

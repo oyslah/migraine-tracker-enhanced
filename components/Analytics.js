@@ -72,7 +72,7 @@ const getMonthRange = (startDate, endDate) => {
     return months;
 };
 
-const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerLogs, mohRules, disabilityLogs }) => {
+const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerLogs, mohRules, disabilityLogs, lifeChanges }) => {
     const [timeRange, setTimeRange] = React.useState('12m');
     const [customStartDate, setCustomStartDate] = React.useState('');
     const [customEndDate, setCustomEndDate] = React.useState('');
@@ -178,6 +178,64 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
         return medicationIntakes.filter(intake => new Date(intake.timestamp) >= cutoffDate);
     }, [medicationIntakes, getCutoffDate, timeRange, customStartDate, customEndDate]);
 
+    const filteredLifeChanges = React.useMemo(() => {
+        if (!lifeChanges || lifeChanges.length === 0) return [];
+        if (timeRange === 'custom') {
+            if (!customStartDate || !customEndDate) return [];
+            return lifeChanges.filter(lc => lc.date && lc.date >= customStartDate && lc.date <= customEndDate);
+        }
+        const cutoffDate = getCutoffDate();
+        if (!cutoffDate) return lifeChanges;
+        return lifeChanges.filter(lc => {
+            if (!lc.date) return false;
+            try {
+                const [year, month, day] = lc.date.split('-').map(Number);
+                const lcDate = new Date(year, month - 1, day);
+                return lcDate >= cutoffDate;
+            } catch {
+                return false;
+            }
+        });
+    }, [lifeChanges, getCutoffDate, timeRange, customStartDate, customEndDate]);
+
+    // Convert lifeChanges to Chart.js annotation objects (vertical dashed lines)
+    const buildLifeChangeAnnotations = React.useCallback((labels) => {
+        if (!filteredLifeChanges.length || !labels || !labels.length) return {};
+        const annotations = {};
+        filteredLifeChanges.forEach((lc) => {
+            const monthKey = lc.date.substring(0, 7);
+            const [year, month] = monthKey.split('-');
+            const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+            const expectedLabel = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+            const labelIndex = labels.indexOf(expectedLabel);
+            if (labelIndex !== -1) {
+                const desc = lc.description && lc.description.length > 30
+                    ? lc.description.substring(0, 28) + '...'
+                    : lc.description || '';
+                annotations[`lc_${lc.id}`] = {
+                    type: 'line',
+                    scaleID: 'x',
+                    value: expectedLabel,
+                    borderColor: '#8DB38B',
+                    borderWidth: 2,
+                    borderDash: [6, 3],
+                    borderDashOffset: 0,
+                    label: {
+                        display: true,
+                        content: desc,
+                        position: 'start',
+                        backgroundColor: 'rgba(141, 179, 139, 0.75)',
+                        color: '#F5F5F5',
+                        font: { size: 10 },
+                        xAdjust: 0,
+                        yAdjust: 0,
+                    },
+                };
+            }
+        });
+        return annotations;
+    }, [filteredLifeChanges]);
+
     // Memoized calculation for Migraine Days Per Month
     const migraineDaysData = React.useMemo(() => {
         try {
@@ -264,11 +322,12 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
             ...commonChartOptions.plugins,
             legend: {
                 display: false,
+            },
+            annotation: {
+                annotations: migraineDaysData ? buildLifeChangeAnnotations(migraineDaysData.labels) : {}
             }
         }
     };
-    
-    // Memoized calculation for Attack Frequency and Severity
     const attackFrequencyData = React.useMemo(() => {
         try {
             const validAttacks = filteredAttacks.filter(attack => {
@@ -362,6 +421,12 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                 title: { display: true, text: 'Avg Severity (0-10)', color: '#B0A6A1'},
                 grid: { drawOnChartArea: false },
             },
+        },
+        plugins: {
+            ...commonChartOptions.plugins,
+            annotation: {
+                annotations: attackFrequencyData ? buildLifeChangeAnnotations(attackFrequencyData.labels) : {}
+            }
         }
     };
     
@@ -693,9 +758,8 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                 max: 3,
             }
         },
-        plugins: { ...commonChartOptions.plugins, legend: { display: false } }
+        plugins: { ...commonChartOptions.plugins, legend: { display: false }, annotation: { annotations: disabilityScoreData ? buildLifeChangeAnnotations(disabilityScoreData.labels) : {} } }
     };
-
     const medEffectivenessData = React.useMemo(() => {
         try {
             const relevantIntakes = filteredMedicationIntakes.filter(i => i.effectiveness);
