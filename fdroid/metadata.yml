@@ -1,0 +1,14 @@
+Categories:
+  - Health & Fitness
+License: MIT
+AuthorName: Daniel Morey
+SourceCode: https://github.com/oyslah/migraine-tracker-enhanced
+IssueTracker: https://github.com/oyslah/migraine-tracker-enhanced/issues
+
+AutoName: Migraine Tracker Enhanced
+Summary: Privacy-first migraine tracking with medication overuse monitoring
+Description: |
+  A fully offline migraine tracker PWA wrapped as an Android app.
+  Track attacks, medications, triggers, and life changes.
+  Built-in MOH risk gauges and customizable push notifications.
+  Dark mode by default for light-sensitive users. No accounts, no cloud.

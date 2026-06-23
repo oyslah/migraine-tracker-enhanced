@@ -29,11 +29,11 @@ export const DEFAULT_MEDICATIONS = [
 ];
 
 export const DEFAULT_MOH_RULES = [
-    { medicationType: 'Non-Opioid Analgesics', threshold: 14 },
+    { medicationType: 'Non-Opioid Analgesics', threshold: 15 },
     { medicationType: 'Combination Analgesics with Caffeine', threshold: 9 },
     { medicationType: 'Triptans', threshold: 9 },
     { medicationType: 'Ergotamines', threshold: 9 },
-    { medicationType: 'Opioids or Barbiturates', threshold: 0 },
+    { medicationType: 'Opioids or Barbiturates', threshold: 9 },
 ];
 
 export const DEFAULT_SYMPTOMS = [

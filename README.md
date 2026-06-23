@@ -1,20 +1,40 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Migraine Tracker Enhanced
 
-# Run and deploy your AI Studio app
+A privacy-first, offline-capable migraine tracking PWA with life changes correlation,
+medication overuse headache (MOH) monitoring, and customizable notifications.
 
-This contains everything you need to run your app locally.
+Built for F-Droid deployment.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1NY1q04x_CbbDWYYFFwGSrLPMzcopIYqK
+## Features
+
+- **Attack Logging** — severity, symptoms, custom symptom support
+- **Medication Tracking** — acute + preventative, effectiveness ratings, MOH risk gauges
+- **Trigger Correlation** — daily check-in with analytics showing trigger→attack probability
+- **Life Changes** — track new meds, lifestyle changes, and overlay on all graphs
+- **Notifications** — customizable preventative reminders, attack check-ins, trigger log nudges
+- **Full Analytics** — migraine days, attack frequency, severity trends, medication effectiveness, trigger correlation, symptom frequency, weekly/time-of-day patterns
+- **Dark mode only** — designed for light-sensitive users
+- **100% local** — all data in IndexedDB, no accounts, no cloud
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:** Node.js 18+
 
+```bash
+npm install
+npm run dev
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Android Build (F-Droid)
+
+```bash
+npm run build
+npx cap sync android
+npx cap open android
+```
+
+Then build APK/AAB from Android Studio.
+
+## License
+
+MIT — fully open source.
