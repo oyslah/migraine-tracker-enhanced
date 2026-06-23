@@ -848,6 +848,8 @@ const DataManager = () => {
     const handleExport = async () => {
         try {
             const appData = {
+                version: 2,
+                exportedAt: new Date().toISOString(),
                 attacks: await db.attacks.toArray(),
                 medications: await db.medications.toArray(),
                 medicationIntakes: await db.medicationIntakes.toArray(),
@@ -856,6 +858,8 @@ const DataManager = () => {
                 triggerLogs: await db.triggerLogs.toArray(),
                 mohRules: await db.mohRules.toArray(),
                 disabilityLogs: await db.disabilityLogs.toArray(),
+                lifeChanges: await db.lifeChanges.toArray(),
+                notificationPrefs: JSON.parse(localStorage.getItem('migraine_notification_prefs') || '{}'),
             };
 
             const dataStr = JSON.stringify(appData, null, 2);

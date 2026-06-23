@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.danielmorey.simplemigrainjournal"
+    namespace "com.danielmorey.migrainetracker"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.danielmorey.simplemigrainjournal"
+        applicationId "com.danielmorey.migrainetracker"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
