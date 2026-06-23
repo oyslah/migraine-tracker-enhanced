@@ -1,0 +1,5 @@
+{
+  "name": "Migraine Tracker",
+  "description": "A privacy-first application to track migraine attacks, medications, and triggers. It uses data visualization to help users discover patterns and correlations, with all data stored locally on your device.",
+  "requestFramePermissions": []
+}

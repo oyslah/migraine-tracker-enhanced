@@ -1,0 +1,17 @@
+{
+  "name": "Migraine Tracker",
+  "short_name": "Migraine",
+  "description": "A privacy-first application to track migraine attacks, medications, and triggers. It uses data visualization to help users discover patterns and correlations, with all data stored locally on your device.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#332A25",
+  "theme_color": "#4A3F3A",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
