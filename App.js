@@ -278,6 +278,12 @@ const App = () => {
       setMohRules(newMohRules);
   }
 
+  const addMedication = async (med) => {
+      await db.medications.add(med);
+      const allMeds = await db.medications.toArray();
+      setMedications(allMeds);
+  }
+
   const navItems = [
     { id: 'home', label: 'Home', icon: React.createElement(HomeIcon), view: 'home' },
     { id: 'analytics', label: 'Analytics', icon: React.createElement(ChartBarIcon), view: 'analytics' },
@@ -306,7 +312,9 @@ const App = () => {
           symptoms: symptoms,
           setSymptoms: handleSetSymptoms,
           disabilityLogs: disabilityLogs,
-          upsertDisabilityLog: upsertDisabilityLog
+          upsertDisabilityLog: upsertDisabilityLog,
+          mohRules: mohRules,
+          addMedication: addMedication
         });
       case 'analytics':
         return React.createElement(ErrorBoundary, { fallback: React.createElement(AnalyticsErrorFallback) },
@@ -359,7 +367,9 @@ const App = () => {
           symptoms: symptoms,
           setSymptoms: handleSetSymptoms,
           disabilityLogs: disabilityLogs,
-          upsertDisabilityLog: upsertDisabilityLog
+          upsertDisabilityLog: upsertDisabilityLog,
+          mohRules: mohRules,
+          addMedication: addMedication
         });
     }
   };

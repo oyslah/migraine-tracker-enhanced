@@ -1,15 +1,23 @@
 import * as React from 'react';
 import { Card, Button, Modal, Label, Input, Textarea, Select, Chip, TrashIcon } from './ui.js';
 import { MedicationType } from '../types.js';
+import { MOH_CATEGORIES } from '../constants.js';
 import AttackLogModal from './AttackLogModal.js';
 import { safeFormatDateTime, safeToDateTimeLocal, toLocalDateString } from '../services/utils.js';
+import ThirtyDayStats from './ThirtyDayStats.js';
+import MOHGauge from './MOHGauge.js';
 
-const MedicationLogModal = ({ isOpen, onClose, medications, onSave }) => {
+const MedicationLogModal = ({ isOpen, onClose, medications, onSave, onAddMedication }) => {
     const loggableMeds = medications.filter(m => m.type === MedicationType.Abortive || m.type === MedicationType.CGRPInhibitor);
     const [medicationId, setMedicationId] = React.useState('');
     const [timestamp, setTimestamp] = React.useState('');
     const [dose, setDose] = React.useState('');
     const [effectiveness, setEffectiveness] = React.useState(null);
+    const [showAddMed, setShowAddMed] = React.useState(false);
+    const [newMedName, setNewMedName] = React.useState('');
+    const [newMedDose, setNewMedDose] = React.useState('');
+    const [newMedType, setNewMedType] = React.useState(MedicationType.Abortive);
+    const [newMedMohCategories, setNewMedMohCategories] = React.useState([]);
 
     // Effect to initialize/reset form state when the modal opens.
     React.useEffect(() => {
@@ -64,6 +72,29 @@ const MedicationLogModal = ({ isOpen, onClose, medications, onSave }) => {
         }
     };
 
+    const handleAddMedication = () => {
+        if (!newMedName.trim()) {
+            alert("Please enter a medication name.");
+            return;
+        }
+        const newMed = {
+            id: `med-${Date.now()}`,
+            name: newMedName.trim(),
+            type: newMedType,
+            dose: newMedDose || "N/A",
+            mohCategories: newMedMohCategories,
+        };
+        if (onAddMedication) {
+            onAddMedication(newMed);
+        }
+        setMedicationId(newMed.id);
+        setShowAddMed(false);
+        setNewMedName('');
+        setNewMedDose('');
+        setNewMedType(MedicationType.Abortive);
+        setNewMedMohCategories([]);
+    };
+
     const EFFECTIVENESS_OPTIONS = [
         { id: null, label: 'Not Sure' },
         { id: 'not_effective', label: 'Not Effective' },
@@ -77,6 +108,43 @@ const MedicationLogModal = ({ isOpen, onClose, medications, onSave }) => {
                 React.createElement(Label, { htmlFor: "med-select" }, "Medication"),
                 React.createElement(Select, { id: "med-select", value: medicationId, onChange: e => setMedicationId(e.target.value) },
                     loggableMeds.map(m => React.createElement('option', { key: m.id, value: m.id }, m.name))
+                ),
+                !showAddMed && React.createElement(Button, { variant: "secondary", className: "mt-2 w-full", onClick: () => setShowAddMed(true) }, "+ Add New Medication"),
+                showAddMed && React.createElement('div', { className: "mt-3 p-3 bg-dark-bg rounded-md space-y-3" },
+                    React.createElement('div', null,
+                        React.createElement(Label, { htmlFor: "new-med-name" }, "Name"),
+                        React.createElement(Input, { id: "new-med-name", placeholder: "Medication name", value: newMedName, onChange: e => setNewMedName(e.target.value) })
+                    ),
+                    React.createElement('div', null,
+                        React.createElement(Label, { htmlFor: "new-med-dose" }, "Dose"),
+                        React.createElement(Input, { id: "new-med-dose", placeholder: "e.g., 50mg", value: newMedDose, onChange: e => setNewMedDose(e.target.value) })
+                    ),
+                    React.createElement('div', null,
+                        React.createElement(Label, { htmlFor: "new-med-type" }, "Type"),
+                        React.createElement(Select, { id: "new-med-type", value: newMedType, onChange: e => setNewMedType(e.target.value) },
+                            React.createElement('option', { value: MedicationType.Abortive }, "Abortive"),
+                            React.createElement('option', { value: MedicationType.Preventive }, "Preventive"),
+                            React.createElement('option', { value: MedicationType.CGRPInhibitor }, "CGRP Inhibitor")
+                        )
+                    ),
+                    React.createElement('div', null,
+                        React.createElement(Label, null, "MOH Categories"),
+                        React.createElement('div', { className: 'flex flex-wrap gap-2 mt-1' },
+                            MOH_CATEGORIES.map(cat =>
+                                React.createElement(Chip, {
+                                    key: cat,
+                                    selected: newMedMohCategories.includes(cat),
+                                    onClick: () => setNewMedMohCategories(prev =>
+                                        prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+                                    ),
+                                }, cat)
+                            )
+                        )
+                    ),
+                    React.createElement('div', { className: "flex justify-end space-x-2 pt-2" },
+                        React.createElement(Button, { variant: "secondary", onClick: () => { setShowAddMed(false); setNewMedName(''); setNewMedDose(''); setNewMedType(MedicationType.Abortive); setNewMedMohCategories([]); } }, "Cancel"),
+                        React.createElement(Button, { onClick: handleAddMedication }, "Save Medication")
+                    )
                 )
             ),
             React.createElement('div', null,
@@ -356,7 +424,7 @@ const FunctionalDisabilityScore = ({ disabilityLogs, upsertDisabilityLog }) => {
 };
 
 
-const Dashboard = ({ attacks, triggers, triggerLogs, upsertTriggerLog, addAttack, updateAttack, deleteAttack, medications, medicationIntakes, addMedicationIntake, updateMedicationIntake, deleteMedicationIntake, symptoms, setSymptoms, disabilityLogs, upsertDisabilityLog }) => {
+const Dashboard = ({ attacks, triggers, triggerLogs, upsertTriggerLog, addAttack, updateAttack, deleteAttack, medications, medicationIntakes, addMedicationIntake, updateMedicationIntake, deleteMedicationIntake, symptoms, setSymptoms, disabilityLogs, upsertDisabilityLog, mohRules, addMedication }) => {
     const [isAttackModalOpen, setIsAttackModalOpen] = React.useState(false);
     const [isMedLogModalOpen, setIsMedLogModalOpen] = React.useState(false);
     const [editingAttack, setEditingAttack] = React.useState(null);
@@ -442,6 +510,8 @@ const Dashboard = ({ attacks, triggers, triggerLogs, upsertTriggerLog, addAttack
                 )
             ),
             React.createElement('div', { className: "lg:col-span-1 space-y-6" },
+                React.createElement(ThirtyDayStats, { attacks: attacks }),
+                React.createElement(MOHGauge, { medicationIntakes: medicationIntakes, medications: medications, mohRules: mohRules }),
                 React.createElement(FunctionalDisabilityScore, { disabilityLogs: disabilityLogs, upsertDisabilityLog: upsertDisabilityLog }),
                 React.createElement(Card, { title: "Recent Attacks" },
                     attacks.length > 0 ? (
@@ -526,7 +596,8 @@ const Dashboard = ({ attacks, triggers, triggerLogs, upsertTriggerLog, addAttack
                     isOpen: isMedLogModalOpen,
                     onClose: () => setIsMedLogModalOpen(false),
                     medications: medications,
-                    onSave: addMedicationIntake
+                    onSave: addMedicationIntake,
+                    onAddMedication: addMedication
                 }
             ),
 
