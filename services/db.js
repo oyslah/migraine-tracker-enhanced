@@ -2,7 +2,7 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('MigraineTrackerDB');
 
-db.version(2).stores({
+db.version(3).stores({
   attacks: 'id, startTime, endTime',
   medications: 'id',
   medicationIntakes: 'id, medicationId, timestamp',
@@ -11,4 +11,5 @@ db.version(2).stores({
   triggerLogs: 'date', // date is the primary key (YYYY-MM-DD)
   mohRules: 'medicationType',
   disabilityLogs: 'date', // New table for disability score
+  lifeChanges: 'id, date', // Life change events
 });

@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { MedicationType } from './types.js';
 import { DEFAULT_TRIGGERS, DEFAULT_MEDICATIONS, DEFAULT_MOH_RULES, DEFAULT_SYMPTOMS } from './constants.js';
-import { MenuIcon, XIcon, ChartBarIcon, CogIcon, Card, HomeIcon, Button } from './components/ui.js';
+import { MenuIcon, XIcon, ChartBarIcon, CogIcon, Card, HomeIcon, Button, CalendarIcon } from './components/ui.js';
 import { migrateAttacks, migrateTriggerLogs, migrateMedications, migrateMedicationIntakes, migrateTriggers, migrateMohRules, migrateSymptoms } from './services/dataMigration.js';
 import ErrorBoundary from './components/ErrorBoundary.js';
 import { db } from './services/db.js';
@@ -9,6 +9,7 @@ import { db } from './services/db.js';
 const Dashboard = React.lazy(() => import('./components/Dashboard.js'));
 const Analytics = React.lazy(() => import('./components/Analytics.js'));
 const LogAndSettings = React.lazy(() => import('./components/LogAndSettings.js'));
+const LifeChanges = React.lazy(() => import('./components/LifeChanges.js'));
 
 const AnalyticsErrorFallback = () => (
     React.createElement(Card, { title: "Analytics Error" },
@@ -57,6 +58,7 @@ const App = () => {
     const [triggerLogs, setTriggerLogs] = React.useState([]);
     const [mohRules, setMohRules] = React.useState([]);
     const [disabilityLogs, setDisabilityLogs] = React.useState([]);
+    const [lifeChanges, setLifeChanges] = React.useState([]);
     const [installPromptEvent, setInstallPromptEvent] = React.useState(null);
     const [showInstallBanner, setShowInstallBanner] = React.useState(false);
 
@@ -147,6 +149,7 @@ const App = () => {
                     triggerLogsData,
                     mohRulesData,
                     disabilityLogsData,
+                    lifeChangesData,
                 ] = await Promise.all([
                     db.attacks.orderBy('startTime').reverse().toArray(),
                     db.medications.toArray(),
@@ -156,6 +159,7 @@ const App = () => {
                     db.triggerLogs.orderBy('date').reverse().toArray(),
                     db.mohRules.toArray(),
                     db.disabilityLogs.orderBy('date').reverse().toArray(),
+                    db.lifeChanges.orderBy('date').reverse().toArray(),
                 ]);
                 
                 setAttacks(attacksData);
@@ -168,6 +172,7 @@ const App = () => {
                 setTriggerLogs(triggerLogsData);
                 setMohRules(mohRulesData.length > 0 ? mohRulesData : DEFAULT_MOH_RULES);
                 setDisabilityLogs(disabilityLogsData);
+                setLifeChanges(lifeChangesData);
 
             } catch (error) {
                 console.error("Failed to load or migrate data:", error);
@@ -284,9 +289,25 @@ const App = () => {
       setMedications(allMeds);
   }
 
+  const addLifeChange = async (lc) => {
+      await db.lifeChanges.add(lc);
+      const all = await db.lifeChanges.orderBy('date').reverse().toArray();
+      setLifeChanges(all);
+  };
+  const updateLifeChange = async (lc) => {
+      await db.lifeChanges.put(lc);
+      const all = await db.lifeChanges.orderBy('date').reverse().toArray();
+      setLifeChanges(all);
+  };
+  const deleteLifeChange = async (id) => {
+      await db.lifeChanges.delete(id);
+      setLifeChanges(prev => prev.filter(lc => lc.id !== id));
+  };
+
   const navItems = [
     { id: 'home', label: 'Home', icon: React.createElement(HomeIcon), view: 'home' },
     { id: 'analytics', label: 'Analytics', icon: React.createElement(ChartBarIcon), view: 'analytics' },
+    { id: 'life_changes', label: 'Life Changes', icon: React.createElement(CalendarIcon), view: 'life_changes' },
     { id: 'log_settings', label: 'Logs & Settings', icon: React.createElement(CogIcon), view: 'log_settings' },
   ];
 
@@ -349,6 +370,13 @@ const App = () => {
           setMohRules: handleSetMohRules,
           disabilityLogs: disabilityLogs,
           upsertDisabilityLog: upsertDisabilityLog,
+        });
+      case 'life_changes':
+        return React.createElement(LifeChanges, {
+          lifeChanges: lifeChanges,
+          onAdd: addLifeChange,
+          onUpdate: updateLifeChange,
+          onDelete: deleteLifeChange,
         });
       default:
         return React.createElement(Dashboard, {
