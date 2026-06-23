@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { MedicationType } from './types.js';
 import { DEFAULT_TRIGGERS, DEFAULT_MEDICATIONS, DEFAULT_MOH_RULES, DEFAULT_SYMPTOMS } from './constants.js';
-import { MenuIcon, XIcon, ChartBarIcon, CogIcon, Card, HomeIcon, Button, CalendarIcon } from './components/ui.js';
+import { MenuIcon, XIcon, ChartBarIcon, CogIcon, Card, HomeIcon, Button, CalendarIcon, BellIcon } from './components/ui.js';
 import { migrateAttacks, migrateTriggerLogs, migrateMedications, migrateMedicationIntakes, migrateTriggers, migrateMohRules, migrateSymptoms } from './services/dataMigration.js';
 import ErrorBoundary from './components/ErrorBoundary.js';
 import { db } from './services/db.js';
@@ -10,6 +10,7 @@ const Dashboard = React.lazy(() => import('./components/Dashboard.js'));
 const Analytics = React.lazy(() => import('./components/Analytics.js'));
 const LogAndSettings = React.lazy(() => import('./components/LogAndSettings.js'));
 const LifeChanges = React.lazy(() => import('./components/LifeChanges.js'));
+const NotificationSettings = React.lazy(() => import('./components/NotificationSettings.js'));
 
 const AnalyticsErrorFallback = () => (
     React.createElement(Card, { title: "Analytics Error" },
@@ -308,6 +309,7 @@ const App = () => {
     { id: 'home', label: 'Home', icon: React.createElement(HomeIcon), view: 'home' },
     { id: 'analytics', label: 'Analytics', icon: React.createElement(ChartBarIcon), view: 'analytics' },
     { id: 'life_changes', label: 'Life Changes', icon: React.createElement(CalendarIcon), view: 'life_changes' },
+    { id: 'notifications', label: 'Notifications', icon: React.createElement(BellIcon), view: 'notifications' },
     { id: 'log_settings', label: 'Logs & Settings', icon: React.createElement(CogIcon), view: 'log_settings' },
   ];
 
@@ -350,6 +352,11 @@ const App = () => {
               lifeChanges: lifeChanges,
             })
         );
+      case 'notifications':
+        return React.createElement(NotificationSettings, {
+          medications: medications,
+          attacks: attacks,
+        });
       case 'log_settings':
         return React.createElement(LogAndSettings, {
           attacks: attacks,
