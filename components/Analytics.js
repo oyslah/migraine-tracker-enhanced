@@ -12,40 +12,40 @@ const commonChartOptions = {
         legend: {
             position: 'top',
             labels: {
-                color: '#F5F5F5',
+                color: '#E6EDF3',
             },
         },
         tooltip: {
-            backgroundColor: 'rgba(51, 42, 37, 0.9)',
-            titleColor: '#F5F5F5',
-            bodyColor: '#F5F5F5',
-            borderColor: '#635752',
+            backgroundColor: 'rgba(13, 17, 23, 0.95)',
+            titleColor: '#E6EDF3',
+            bodyColor: '#E6EDF3',
+            borderColor: '#30363D',
             borderWidth: 1,
         },
     },
     scales: {
         x: {
             ticks: {
-                color: '#B0A6A1',
+                color: '#8B949E',
                 maxRotation: 0,
                 autoSkip: true,
             },
             grid: {
-                color: 'rgba(99, 87, 82, 0.2)',
+                color: 'rgba(48, 54, 61, 0.3)',
             },
              border: {
-                color: 'rgba(99, 87, 82, 0.4)',
+                color: 'rgba(48, 54, 61, 0.5)',
             },
         },
         y: {
             ticks: {
-                color: '#B0A6A1',
+                color: '#8B949E',
             },
             grid: {
-                color: 'rgba(99, 87, 82, 0.2)',
+                color: 'rgba(48, 54, 61, 0.3)',
             },
              border: {
-                color: 'rgba(99, 87, 82, 0.4)',
+                color: 'rgba(48, 54, 61, 0.5)',
             },
         },
     },
@@ -202,6 +202,10 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
     const buildLifeChangeAnnotations = React.useCallback((labels) => {
         if (!filteredLifeChanges.length || !labels || !labels.length) return {};
         const annotations = {};
+        // Track per-label offset for same-month overlaps
+        const labelOffsets = {};
+        // Global counter to alternate position (top/bottom) so adjacent-month labels don't collide
+        let globalIndex = 0;
         filteredLifeChanges.forEach((lc) => {
             const monthKey = lc.date.substring(0, 7);
             const [year, month] = monthKey.split('-');
@@ -212,23 +216,30 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                 const desc = lc.description && lc.description.length > 30
                     ? lc.description.substring(0, 28) + '...'
                     : lc.description || '';
+                // Same-month stagger: each annotation on the same label gets pushed further
+                const sameMonthOffset = labelOffsets[expectedLabel] || 0;
+                labelOffsets[expectedLabel] = sameMonthOffset + 30;
+                // Alternate between top (start) and bottom (end) to prevent cross-month overlap
+                const position = globalIndex % 2 === 0 ? 'start' : 'end';
+                const yOffset = position === 'start' ? -sameMonthOffset : sameMonthOffset;
+                globalIndex++;
                 annotations[`lc_${lc.id}`] = {
                     type: 'line',
                     scaleID: 'x',
                     value: expectedLabel,
-                    borderColor: '#8DB38B',
+                    borderColor: '#BC8CFF',
                     borderWidth: 2,
                     borderDash: [6, 3],
                     borderDashOffset: 0,
                     label: {
                         display: true,
                         content: desc,
-                        position: 'start',
-                        backgroundColor: 'rgba(141, 179, 139, 0.75)',
-                        color: '#F5F5F5',
+                        position: position,
+                        backgroundColor: 'rgba(188, 140, 255, 0.85)',
+                        color: '#FFFFFF',
                         font: { size: 10 },
                         xAdjust: 0,
-                        yAdjust: 0,
+                        yAdjust: yOffset,
                     },
                 };
             }
@@ -286,14 +297,24 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                 return new Date(parseInt(year), parseInt(monthNum) - 1, 1).toLocaleString('default', { month: 'short', year: '2-digit' });
             });
             const data = fullMonthRange.map(month => dataByMonth[month] || 0);
+            
+            // Color bars by severity: blue→green→amber→orange→red
+            const barColors = data.map(days => {
+                if (days === 0) return 'rgba(72, 79, 88, 0.5)'; // gray for zero
+                if (days <= 2) return 'rgba(88, 166, 255, 0.75)';  // blue
+                if (days <= 5) return 'rgba(63, 185, 80, 0.75)';   // green
+                if (days <= 8) return 'rgba(210, 153, 34, 0.75)';  // amber
+                if (days <= 12) return 'rgba(240, 136, 62, 0.8)';  // orange
+                return 'rgba(248, 81, 73, 0.85)';                   // red
+            });
 
             return {
                 labels,
                 datasets: [{
                     label: 'Days with Migraine',
                     data: data,
-                    backgroundColor: 'rgba(141, 179, 139, 0.6)',
-                    borderColor: 'rgba(141, 179, 139, 1)',
+                    backgroundColor: barColors,
+                    borderColor: 'rgba(48, 54, 61, 0.5)',
                     borderWidth: 1,
                 }],
             };
@@ -310,7 +331,7 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
             y: {
                 ...commonChartOptions.scales?.y,
                 type: 'linear',
-                title: { display: true, text: 'Number of Days', color: '#B0A6A1' },
+                title: { display: true, text: 'Number of Days', color: '#8B949E' },
                 beginAtZero: true,
                 ticks: {
                     ...commonChartOptions.scales?.y?.ticks,
@@ -328,7 +349,64 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
             }
         }
     };
-    const attackFrequencyData = React.useMemo(() => {
+    const attackFrequencyOnlyData = React.useMemo(() => {
+        try {
+            const validAttacks = filteredAttacks.filter(attack => {
+                const date = new Date(attack.startTime);
+                return !isNaN(date.getTime());
+            });
+
+            if (validAttacks.length === 0) return null;
+            
+            validAttacks.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+            const firstDate = new Date(validAttacks[0].startTime);
+            const lastDate = new Date(validAttacks[validAttacks.length - 1].startTime);
+
+            const dataByMonth = {};
+            validAttacks.forEach(attack => {
+                const date = new Date(attack.startTime);
+                const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                dataByMonth[dateKey] = (dataByMonth[dateKey] || 0) + 1;
+            });
+
+            if (Object.keys(dataByMonth).length < 1) return null;
+
+            const fullMonthRange = getMonthRange(firstDate, lastDate);
+            const labels = fullMonthRange.map(month => {
+                const [year, monthNum] = month.split('-');
+                return new Date(parseInt(year), parseInt(monthNum) - 1, 15).toLocaleString('default', { month: 'short', year: '2-digit' });
+            });
+            const counts = fullMonthRange.map(month => dataByMonth[month] || 0);
+
+            // Color bars by frequency
+            const maxCount = Math.max(...counts, 1);
+            const barColors = counts.map(c => {
+                if (c === 0) return 'rgba(72, 79, 88, 0.5)';
+                const pct = c / maxCount;
+                if (pct <= 0.2) return 'rgba(88, 166, 255, 0.75)';
+                if (pct <= 0.4) return 'rgba(63, 185, 80, 0.75)';
+                if (pct <= 0.6) return 'rgba(210, 153, 34, 0.75)';
+                if (pct <= 0.8) return 'rgba(240, 136, 62, 0.8)';
+                return 'rgba(248, 81, 73, 0.85)';
+            });
+
+            return {
+                labels,
+                datasets: [{
+                    label: 'Number of Attacks',
+                    data: counts,
+                    backgroundColor: barColors,
+                    borderColor: 'rgba(48, 54, 61, 0.5)',
+                    borderWidth: 1,
+                }],
+            };
+        } catch (error) {
+            console.error("Error calculating attack frequency data:", error);
+            return null;
+        }
+    }, [filteredAttacks]);
+
+    const attackSeverityData = React.useMemo(() => {
         try {
             const validAttacks = filteredAttacks.filter(attack => {
                 const date = new Date(attack.startTime);
@@ -346,86 +424,80 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                 const date = new Date(attack.startTime);
                 const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 if (!dataByMonth[dateKey]) {
-                    dataByMonth[dateKey] = { count: 0, severitySum: 0 };
+                    dataByMonth[dateKey] = { severitySum: 0, count: 0 };
                 }
-                dataByMonth[dateKey].count++;
                 dataByMonth[dateKey].severitySum += attack.severity;
+                dataByMonth[dateKey].count++;
             });
 
-            if (Object.keys(dataByMonth).length === 0) return null;
+            if (Object.keys(dataByMonth).length < 1) return null;
 
             const fullMonthRange = getMonthRange(firstDate, lastDate);
-
             const labels = fullMonthRange.map(month => {
                 const [year, monthNum] = month.split('-');
                 return new Date(parseInt(year), parseInt(monthNum) - 1, 15).toLocaleString('default', { month: 'short', year: '2-digit' });
             });
-            
-            const counts = fullMonthRange.map(month => dataByMonth[month]?.count || 0);
             const avgSeverities = fullMonthRange.map(month => {
                 const monthData = dataByMonth[month];
-                // For months with no attacks, the average severity should be 0 to reflect no activity.
-                return (monthData && monthData.count > 0) ? (monthData.severitySum / monthData.count) : 0;
+                return (monthData && monthData.count > 0) ? (monthData.severitySum / monthData.count) : null;
             });
-            
-            // Only show trend line if there are at least two distinct months with data
-            if (Object.keys(dataByMonth).length < 2) return null;
 
             return {
                 labels,
-                datasets: [
-                    {
-                        label: 'Number of Attacks',
-                        data: counts,
-                        borderColor: '#8C7A72',
-                        backgroundColor: 'rgba(140, 122, 114, 0.5)',
-                        yAxisID: 'y',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Average Severity',
-                        data: avgSeverities,
-                        borderColor: '#D9A056',
-                        backgroundColor: 'rgba(217, 160, 86, 0.5)',
-                        yAxisID: 'y1',
-                        tension: 0.1,
-                        spanGaps: false,
-                    }
-                ],
+                datasets: [{
+                    label: 'Average Severity',
+                    data: avgSeverities,
+                    borderColor: '#D29922',
+                    backgroundColor: 'rgba(210, 153, 34, 0.5)',
+                    tension: 0.1,
+                    spanGaps: false,
+                }],
             };
         } catch (error) {
-            console.error("Error calculating attack frequency data:", error);
-            return null; // Return null on error to prevent crash
+            console.error("Error calculating attack severity data:", error);
+            return null;
         }
     }, [filteredAttacks]);
+
+    const oldAttackFrequencyData = null; // replaced by split charts above
 
     const attackFrequencyOptions = {
         ...commonChartOptions,
         scales: {
-            x: commonChartOptions.scales?.x,
+            ...commonChartOptions.scales,
             y: {
                 ...commonChartOptions.scales?.y,
                 type: 'linear',
-                display: true,
-                position: 'left',
-                title: { display: true, text: 'Number of Attacks', color: '#B0A6A1'},
+                title: { display: true, text: 'Number of Attacks', color: '#8B949E'},
                 beginAtZero: true,
-            },
-            y1: {
-                ...commonChartOptions.scales?.y,
-                type: 'linear',
-                display: true,
-                position: 'right',
-                min: 0,
-                max: 10,
-                title: { display: true, text: 'Avg Severity (0-10)', color: '#B0A6A1'},
-                grid: { drawOnChartArea: false },
             },
         },
         plugins: {
             ...commonChartOptions.plugins,
+            legend: { display: false },
             annotation: {
-                annotations: attackFrequencyData ? buildLifeChangeAnnotations(attackFrequencyData.labels) : {}
+                annotations: attackFrequencyOnlyData ? buildLifeChangeAnnotations(attackFrequencyOnlyData.labels) : {}
+            }
+        }
+    };
+
+    const attackSeverityOptions = {
+        ...commonChartOptions,
+        scales: {
+            ...commonChartOptions.scales,
+            y: {
+                ...commonChartOptions.scales?.y,
+                type: 'linear',
+                min: 0,
+                max: 10,
+                title: { display: true, text: 'Avg Severity (0-10)', color: '#8B949E'},
+            },
+        },
+        plugins: {
+            ...commonChartOptions.plugins,
+            legend: { display: false },
+            annotation: {
+                annotations: attackSeverityData ? buildLifeChangeAnnotations(attackSeverityData.labels) : {}
             }
         }
     };
@@ -493,13 +565,22 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                 totalDays: item.triggerDaysCount
             }));
 
+            // Color bars by risk: blue→green→amber→orange→red
+            const barColors = data.map(pct => {
+                if (pct <= 20) return 'rgba(88, 166, 255, 0.75)';
+                if (pct <= 40) return 'rgba(63, 185, 80, 0.75)';
+                if (pct <= 60) return 'rgba(210, 153, 34, 0.75)';
+                if (pct <= 80) return 'rgba(240, 136, 62, 0.8)';
+                return 'rgba(248, 81, 73, 0.85)';
+            });
+
             return {
                 labels,
                 datasets: [{
                     label: 'Migraine Chance on Trigger Day (%)',
                     data: data,
-                    backgroundColor: 'rgba(217, 120, 86, 0.6)',
-                    borderColor: 'rgba(217, 120, 86, 1)',
+                    backgroundColor: barColors,
+                    borderColor: 'rgba(48, 54, 61, 0.5)',
                     borderWidth: 1,
                     meta: meta,
                 }],
@@ -536,7 +617,7 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
             x: {
                 ...commonChartOptions.scales?.x,
                 type: 'linear',
-                title: { display: true, text: 'Migraine Probability on Trigger Days (%)', color: '#B0A6A1'},
+                title: { display: true, text: 'Migraine Probability on Trigger Days (%)', color: '#8B949E'},
                 ticks: {
                     ...commonChartOptions.scales?.x?.ticks,
                     callback: (value) => value + "%"
@@ -570,14 +651,25 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
 
             const labels = sortedSymptoms.map(([symptom]) => symptom);
             const data = sortedSymptoms.map(([, count]) => count);
+            const maxCount = Math.max(...data, 1);
+
+            // Color bars by frequency relative to most common symptom
+            const barColors = data.map(c => {
+                const pct = c / maxCount;
+                if (pct <= 0.2) return 'rgba(88, 166, 255, 0.75)';
+                if (pct <= 0.4) return 'rgba(63, 185, 80, 0.75)';
+                if (pct <= 0.6) return 'rgba(210, 153, 34, 0.75)';
+                if (pct <= 0.8) return 'rgba(240, 136, 62, 0.8)';
+                return 'rgba(248, 81, 73, 0.85)';
+            });
 
             return {
                 labels,
                 datasets: [{
                     label: 'Symptom Occurrences',
                     data,
-                    backgroundColor: 'rgba(217, 86, 99, 0.6)',
-                    borderColor: 'rgba(217, 86, 99, 1)',
+                    backgroundColor: barColors,
+                    borderColor: 'rgba(48, 54, 61, 0.5)',
                     borderWidth: 1,
                 }],
             };
@@ -599,7 +691,7 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
             x: {
                 ...commonChartOptions.scales?.x,
                 type: 'linear',
-                title: { display: true, text: 'Number of Occurrences', color: '#B0A6A1'},
+                title: { display: true, text: 'Number of Occurrences', color: '#8B949E'},
                 beginAtZero: true,
                 ticks: {
                     ...commonChartOptions.scales?.x?.ticks,
@@ -736,8 +828,8 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                 datasets: [{
                     label: 'Avg. Disability Score',
                     data: data,
-                    borderColor: '#D95663',
-                    backgroundColor: 'rgba(217, 86, 99, 0.5)',
+                    borderColor: '#F85149',
+                    backgroundColor: 'rgba(248, 81, 73, 0.5)',
                     tension: 0.1
                 }]
             };
@@ -753,7 +845,7 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
             ...commonChartOptions.scales,
             y: {
                 ...commonChartOptions.scales?.y,
-                title: { display: true, text: 'Avg. Score (0-3)', color: '#B0A6A1' },
+                title: { display: true, text: 'Avg. Score (0-3)', color: '#8B949E' },
                 min: 0,
                 max: 3,
             }
@@ -802,19 +894,19 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                     {
                         label: 'Effective',
                         data: dataForChart.map(d => d.total > 0 ? (d.effective / d.total) * 100 : 0),
-                        backgroundColor: '#8DB38B', // dark-success
+                        backgroundColor: '#3FB950', // dark-success
                         meta: dataForChart,
                     },
                     {
                         label: 'Partially Effective',
                         data: dataForChart.map(d => d.total > 0 ? (d.partially_effective / d.total) * 100 : 0),
-                        backgroundColor: '#D9A056', // dark-warning
+                        backgroundColor: '#D29922', // dark-warning
                         meta: dataForChart,
                     },
                     {
                         label: 'Not Effective',
                         data: dataForChart.map(d => d.total > 0 ? (d.not_effective / d.total) * 100 : 0),
-                        backgroundColor: '#D95663', // dark-danger
+                        backgroundColor: '#F85149', // dark-danger
                         meta: dataForChart,
                     },
                 ]
@@ -857,7 +949,7 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                 ...commonChartOptions.scales.x, 
                 max: 100, 
                 stacked: true,
-                title: { display: true, text: 'Effectiveness Breakdown (%)', color: '#B0A6A1' } 
+                title: { display: true, text: 'Effectiveness Breakdown (%)', color: '#8B949E' } 
             },
             y: {
                 ...commonChartOptions.scales.y,
@@ -874,12 +966,22 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                 const day = new Date(attack.startTime).getDay();
                 dayCounts[day]++;
             });
+            const maxCount = Math.max(...dayCounts, 1);
+            const barColors = dayCounts.map(c => {
+                if (c === 0) return 'rgba(72, 79, 88, 0.5)';
+                const pct = c / maxCount;
+                if (pct <= 0.2) return 'rgba(88, 166, 255, 0.75)';
+                if (pct <= 0.4) return 'rgba(63, 185, 80, 0.75)';
+                if (pct <= 0.6) return 'rgba(210, 153, 34, 0.75)';
+                if (pct <= 0.8) return 'rgba(240, 136, 62, 0.8)';
+                return 'rgba(248, 81, 73, 0.85)';
+            });
             return {
                 labels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
                 datasets: [{
                     label: 'Number of Attacks',
                     data: dayCounts,
-                    backgroundColor: 'rgba(217, 160, 86, 0.6)'
+                    backgroundColor: barColors
                 }]
             };
         } catch (error) {
@@ -891,7 +993,7 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
     const weeklyCycleOptions = {
         ...commonChartOptions,
         plugins: { ...commonChartOptions.plugins, legend: { display: false } },
-        scales: { ...commonChartOptions.scales, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Number of Attacks', color: '#B0A6A1' } } }
+        scales: { ...commonChartOptions.scales, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Number of Attacks', color: '#8B949E' } } }
     };
 
     const timeOfDayData = React.useMemo(() => {
@@ -931,13 +1033,23 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                 label === 'Overnight / Early Morning' ? ['Overnight /', 'Early Morning'] : label
             );
             const data = Object.values(timeOfDayCounts);
+            const maxCount = Math.max(...data, 1);
+            const barColors = data.map(c => {
+                if (c === 0) return 'rgba(72, 79, 88, 0.5)';
+                const pct = c / maxCount;
+                if (pct <= 0.2) return 'rgba(88, 166, 255, 0.75)';
+                if (pct <= 0.4) return 'rgba(63, 185, 80, 0.75)';
+                if (pct <= 0.6) return 'rgba(210, 153, 34, 0.75)';
+                if (pct <= 0.8) return 'rgba(240, 136, 62, 0.8)';
+                return 'rgba(248, 81, 73, 0.85)';
+            });
 
             return {
                 labels: labels,
                 datasets: [{
                     label: 'Number of Attacks',
                     data: data,
-                    backgroundColor: 'rgba(140, 122, 114, 0.6)'
+                    backgroundColor: barColors
                 }]
             };
         } catch (error) {
@@ -960,7 +1072,7 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
             },
             y: { 
                 ...commonChartOptions.scales.y, 
-                title: { display: true, text: 'Number of Attacks', color: '#B0A6A1' } 
+                title: { display: true, text: 'Number of Attacks', color: '#8B949E' } 
             } 
         }
     };
@@ -1034,10 +1146,27 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                         )
                    )
                 ),
-                React.createElement(Card, { title: "Attack Frequency & Severity" },
+                React.createElement(Card, { title: "Attack Frequency" },
+                    React.createElement('p', { className: "text-sm text-dark-text-secondary mb-4 -mt-2" },
+                        "Number of migraine attacks per month. Bars are color-coded: blue (low) → green → amber → orange → red (high)."
+                    ),
                    React.createElement('div', { className: "h-96" },
-                        attackFrequencyData ? (
-                            React.createElement(ChartComponent, { type: "line", data: attackFrequencyData, options: attackFrequencyOptions })
+                        attackFrequencyOnlyData ? (
+                            React.createElement(ChartComponent, { type: "bar", data: attackFrequencyOnlyData, options: attackFrequencyOptions })
+                        ) : (
+                            React.createElement('div', { className: "flex items-center justify-center h-full" },
+                               React.createElement('p', { className: "text-dark-text-secondary text-center" }, "Not enough data to display a trend. Please log attacks in at least two different months.")
+                            )
+                        )
+                   )
+                ),
+                React.createElement(Card, { title: "Average Attack Severity" },
+                    React.createElement('p', { className: "text-sm text-dark-text-secondary mb-4 -mt-2" },
+                        "Average severity of attacks per month (0-10 scale). Gaps indicate months with no attacks."
+                    ),
+                   React.createElement('div', { className: "h-96" },
+                        attackSeverityData ? (
+                            React.createElement(ChartComponent, { type: "line", data: attackSeverityData, options: attackSeverityOptions })
                         ) : (
                             React.createElement('div', { className: "flex items-center justify-center h-full" },
                                React.createElement('p', { className: "text-dark-text-secondary text-center" }, "Not enough data to display a trend. Please log attacks in at least two different months.")
@@ -1106,7 +1235,7 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                            )
                        )
                     )
-                ),
+            ),
                 React.createElement(Card, { title: "Symptom Frequency" },
                     React.createElement('p', { className: "text-sm text-dark-text-secondary mb-4 -mt-2" },
                         "Common symptoms reported during migraine attacks in the selected time range."
@@ -1119,35 +1248,6 @@ const Analytics = ({ attacks, medicationIntakes, medications, triggers, triggerL
                              React.createElement('p', { className: "text-dark-text-secondary text-center" }, "Log attacks with symptoms to see this chart.")
                            )
                        )
-                    )
-                ),
-                 React.createElement(Card, { title: "Medication Overuse Risk (Last 30 Days)", className: "xl:col-span-2" },
-                    React.createElement('p', { className: "text-sm text-dark-text-secondary mb-4" },
-                        "This tracks the number of days you've used certain types of acute medication. Frequent use can be a risk factor for Medication Overuse Headache (MOH).",
-                        React.createElement('br'),
-                        React.createElement('em', { className: "text-xs" }, "This is for informational purposes only and is not medical advice.")
-                    ),
-                    React.createElement('div', { className: "space-y-4" },
-                        mohData.length > 0 ? mohData.map(data => (
-                            React.createElement('div', { key: data.name },
-                                React.createElement('div', { className: "flex justify-between items-center mb-1 text-sm" },
-                                    React.createElement('span', { className: "font-semibold" }, data.name),
-                                    React.createElement('span', { className: "text-dark-text-secondary" }, `${data.days} / ${data.threshold} days`)
-                                ),
-                                React.createElement('div', { className: "w-full bg-dark-bg rounded-full h-2.5" },
-                                    React.createElement('div', 
-                                        {
-                                            className: `h-2.5 rounded-full transition-all duration-500 ${data.percentage >= 80 ? 'bg-dark-danger' : data.percentage >= 50 ? 'bg-dark-warning' : 'bg-dark-primary'}`, 
-                                            style: { width: `${data.percentage}%`}
-                                        }
-                                    )
-                                )
-                            )
-                        )) : (
-                             React.createElement('div', { className: "flex items-center justify-center h-full pt-8" },
-                                React.createElement('p', { className: "text-dark-text-secondary text-center text-sm" }, "No medication overuse rules are configured or no relevant medications have been taken in the last 30 days.")
-                           )
-                        )
                     )
                 )
             )

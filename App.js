@@ -5,6 +5,7 @@ import { MenuIcon, XIcon, ChartBarIcon, CogIcon, Card, HomeIcon, Button, Calenda
 import { migrateAttacks, migrateTriggerLogs, migrateMedications, migrateMedicationIntakes, migrateTriggers, migrateMohRules, migrateSymptoms } from './services/dataMigration.js';
 import ErrorBoundary from './components/ErrorBoundary.js';
 import { db } from './services/db.js';
+import { injectTestData } from './testDataLoader.js';
 
 const Dashboard = React.lazy(() => import('./components/Dashboard.js'));
 const Analytics = React.lazy(() => import('./components/Analytics.js'));
@@ -79,6 +80,23 @@ const App = () => {
                 }
                 
                 const migrationNeeded = !localStorage.getItem('mygraine_migration_to_idb_complete_v1');
+
+                // Check for test data injection via URL param
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('loadTestData') === 'true') {
+                    try {
+                        console.log("🧪 Loading test data...");
+                        await injectTestData();
+                        console.log("🧪 Test data injected! Reloading...");
+                        localStorage.setItem('mygraine_migration_to_idb_complete_v1', 'true');
+                        alert('✅ Test data loaded! 45 attacks + 6 months of daily logs are ready. The page will reload now.');
+                        window.location.href = window.location.pathname;
+                        return; // stop here, page will reload
+                    } catch (e) {
+                        console.error("Test data injection failed:", e);
+                        alert('❌ Test data failed to load: ' + e.message);
+                    }
+                }
 
                 if (migrationNeeded) {
                     console.log("Migration to IndexedDB needed. Starting process...");

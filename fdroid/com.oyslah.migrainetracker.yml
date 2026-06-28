@@ -1,0 +1,42 @@
+Categories:
+  - Health & Fitness
+License: MIT
+AuthorName: oyslah
+SourceCode: https://github.com/oyslah/migraine-tracker-enhanced
+IssueTracker: https://github.com/oyslah/migraine-tracker-enhanced/issues
+Changelog: https://github.com/oyslah/migraine-tracker-enhanced/releases
+
+AutoName: Migraine Tracker
+Summary: Privacy-first migraine tracking with medication overuse monitoring
+Description: |
+  A fully offline migraine tracker for Android. Track migraine
+  attacks, acute medications, triggers, symptoms, and life changes.
+  Built-in Medication Overuse Headache (MOH) risk gauges with
+  per-category thresholds and customizable push notifications for
+  preventative medication reminders and daily check-ins.
+
+  All data stays on your device — no accounts, no cloud, no tracking.
+  Dark mode optimized for light-sensitive users. Analytics show
+  attack frequency, severity trends, trigger correlations, and
+  symptom patterns over time.
+
+RepoType: git
+Repo: https://github.com/oyslah/migraine-tracker-enhanced
+
+Builds:
+  - versionName: '1.0'
+    versionCode: 1
+    commit: v1.0
+    sudo:
+      - apt-get install -y nodejs npm
+    init: npm install
+    prebuild:
+      - npm run build
+      - npx cap sync android
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: '1.0'
+CurrentVersionCode: 1

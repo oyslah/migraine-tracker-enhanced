@@ -6,22 +6,26 @@ Chart.register(annotationPlugin);
 
 const ChartComponent = ({ type, data, options }) => {
   const canvasRef = React.useRef(null);
+  const chartRef = React.useRef(null);
 
   React.useEffect(() => {
-    let chartInstance = null;
-    if (canvasRef.current) {
-      const context = canvasRef.current.getContext('2d');
-      if (context) {
-        chartInstance = new Chart(context, {
-          type,
-          data,
-          options,
-        });
-      }
+    if (!canvasRef.current) return;
+    const context = canvasRef.current.getContext('2d');
+    if (!context) return;
+
+    if (chartRef.current) {
+      // Update existing chart in-place — no flash or recreate
+      chartRef.current.data = data;
+      chartRef.current.options = options;
+      chartRef.current.config.type = type;
+      chartRef.current.update();
+    } else {
+      chartRef.current = new Chart(context, { type, data, options });
     }
 
     return () => {
-      chartInstance?.destroy();
+      chartRef.current?.destroy();
+      chartRef.current = null;
     };
   }, [type, data, options]);
 

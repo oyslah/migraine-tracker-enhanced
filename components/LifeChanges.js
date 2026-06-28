@@ -1,24 +1,14 @@
 import * as React from 'react';
-import { Card, Button, Modal, Label, Input, Select, TrashIcon } from './ui.js';
-
-const CATEGORIES = [
-  { id: 'new_preventative', label: 'New Preventative' },
-  { id: 'workout', label: 'Started Workout' },
-  { id: 'moved', label: 'Moved' },
-  { id: 'diet', label: 'Diet Change' },
-  { id: 'other', label: 'Other' },
-];
+import { Card, Button, Modal, Label, Input, TrashIcon } from './ui.js';
 
 const LifeChangeModal = ({ isOpen, onClose, onSave, lifeChange }) => {
   const [date, setDate] = React.useState('');
   const [description, setDescription] = React.useState('');
-  const [category, setCategory] = React.useState('other');
 
   React.useEffect(() => {
     if (isOpen) {
       setDate(lifeChange?.date || new Date().toISOString().slice(0, 10));
       setDescription(lifeChange?.description || '');
-      setCategory(lifeChange?.category || 'other');
     }
   }, [isOpen, lifeChange]);
 
@@ -31,7 +21,6 @@ const LifeChangeModal = ({ isOpen, onClose, onSave, lifeChange }) => {
       id: lifeChange?.id || `lc-${Date.now()}`,
       date,
       description: description.trim(),
-      category,
     });
     onClose();
   };
@@ -41,12 +30,6 @@ const LifeChangeModal = ({ isOpen, onClose, onSave, lifeChange }) => {
       React.createElement('div', null,
         React.createElement(Label, { htmlFor: 'lc-date' }, 'Date'),
         React.createElement(Input, { type: 'date', id: 'lc-date', value: date, onChange: e => setDate(e.target.value) })
-      ),
-      React.createElement('div', null,
-        React.createElement(Label, { htmlFor: 'lc-category' }, 'Category'),
-        React.createElement(Select, { id: 'lc-category', value: category, onChange: e => setCategory(e.target.value) },
-          CATEGORIES.map(c => React.createElement('option', { key: c.id, value: c.id }, c.label))
-        )
       ),
       React.createElement('div', null,
         React.createElement(Label, { htmlFor: 'lc-desc' }, 'Description'),
@@ -68,11 +51,6 @@ const LifeChanges = ({ lifeChanges, onAdd, onUpdate, onDelete }) => {
     () => [...lifeChanges].sort((a, b) => b.date.localeCompare(a.date)),
     [lifeChanges]
   );
-
-  const getCategoryLabel = (catId) => {
-    const c = CATEGORIES.find(x => x.id === catId);
-    return c ? c.label : catId;
-  };
 
   const formatDate = (dateStr) => {
     try {
@@ -100,9 +78,6 @@ const LifeChanges = ({ lifeChanges, onAdd, onUpdate, onDelete }) => {
         React.createElement('div', { className: 'flex justify-between items-start gap-4' },
           React.createElement('div', { className: 'flex-grow' },
             React.createElement('div', { className: 'flex items-center gap-2 mb-1' },
-              React.createElement('span', { className: 'text-xs font-semibold px-2 py-0.5 rounded-full bg-dark-bg text-dark-text-secondary' },
-                getCategoryLabel(lc.category)
-              ),
               React.createElement('span', { className: 'text-sm text-dark-text-secondary' }, formatDate(lc.date))
             ),
             React.createElement('p', { className: 'text-dark-text-primary' }, lc.description)

@@ -1,4 +1,4 @@
-package com.danielmorey.migrainetracker;
+package com.oyslah.migrainetracker;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -135,7 +135,7 @@ Standard MIT license with "Daniel Morey" as copyright holder.
 Categories:
   - Health & Fitness
 License: MIT
-AuthorName: Daniel Morey
+AuthorName: oyslah
 SourceCode: https://github.com/oyslah/migraine-tracker-enhanced
 IssueTracker: https://github.com/oyslah/migraine-tracker-enhanced/issues
 
@@ -721,7 +721,7 @@ git commit -m "feat: integrate notifications into app shell and navigation"
 
 ```json
 {
-  "appId": "com.danielmorey.migrainetracker",
+  "appId": "com.oyslah.migrainetracker",
   "appName": "Migraine Tracker",
   "webDir": "dist",
   "plugins": {
@@ -739,7 +739,7 @@ In `android/app/src/main/res/values/strings.xml`, set `app_name` to "Migraine Tr
 
 **Step 3: Update build.gradle for release**
 
-Ensure `applicationId` matches `com.danielmorey.migrainetracker` in `android/app/build.gradle`.
+Ensure `applicationId` matches `com.oyslah.migrainetracker` in `android/app/build.gradle`.
 
 **Verification:** `npx cap sync android` succeeds, Android project compiles
 

@@ -15,14 +15,12 @@ const MOHGauge = ({ medicationIntakes, medications, mohRules }) => {
     const medTypeMap = new Map(medications.map(m => [m.id, m]));
     const abortiveIntakes = recentIntakes.filter(i => {
       const med = medTypeMap.get(i.medicationId);
-      return med && (med.type === MedicationType.Abortive || med.type === MedicationType.CGRPInhibitor);
+      // Only traditional acute medications carry MOH risk — exclude CGRP inhibitors (gepants)
+      return med && med.type === MedicationType.Abortive;
     });
 
-    // Combined days — only applies if more than one distinct abortive med
-    const uniqueAbortiveMeds = new Set(abortiveIntakes.map(i => i.medicationId));
-    const combinedDays = uniqueAbortiveMeds.size > 1
-      ? new Set(abortiveIntakes.map(i => toLocalDateString(i.timestamp))).size
-      : 0;
+    // Combined days — ALL abortive use regardless of how many distinct meds
+    const combinedDays = new Set(abortiveIntakes.map(i => toLocalDateString(i.timestamp))).size;
 
     // Per-category days
     const categories = mohRules.map(rule => {
@@ -48,17 +46,21 @@ const MOHGauge = ({ medicationIntakes, medications, mohRules }) => {
   const getColor = (days, threshold) => {
     if (threshold === 0) return 'bg-dark-success';
     const pct = days / threshold;
-    if (pct >= 1) return 'bg-dark-danger';
-    if (pct >= 0.7) return 'bg-dark-warning';
-    return 'bg-dark-success';
+    if (pct >= 1) return 'bg-dark-danger';          // red
+    if (pct >= 0.7) return 'bg-[#F0883E]';          // orange
+    if (pct >= 0.4) return 'bg-dark-warning';        // amber
+    if (pct >= 0.15) return 'bg-dark-success';       // green
+    return 'bg-dark-primary';                         // blue
   };
 
   const getTextColor = (days, threshold) => {
     if (threshold === 0) return 'text-dark-success';
     const pct = days / threshold;
     if (pct >= 1) return 'text-dark-danger';
-    if (pct >= 0.7) return 'text-dark-warning';
-    return 'text-dark-success';
+    if (pct >= 0.7) return 'text-[#F0883E]';
+    if (pct >= 0.4) return 'text-dark-warning';
+    if (pct >= 0.15) return 'text-dark-success';
+    return 'text-dark-primary';
   };
 
   return React.createElement(Card, { title: "MOH Risk (Last 30 Days)" },

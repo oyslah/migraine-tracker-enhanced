@@ -4,6 +4,7 @@ import { MedicationType } from '../types.js';
 import { MOH_CATEGORIES } from '../constants.js';
 import AttackLogModal from './AttackLogModal.js';
 import { safeFormatDateTime, safeToDateTimeLocal, toLocalDateString } from '../services/utils.js';
+import MedicationIntakeEditModal from './MedicationIntakeEditModal.js';
 import ThirtyDayStats from './ThirtyDayStats.js';
 import MOHGauge from './MOHGauge.js';
 
@@ -122,7 +123,7 @@ const MedicationLogModal = ({ isOpen, onClose, medications, onSave, onAddMedicat
                     React.createElement('div', null,
                         React.createElement(Label, { htmlFor: "new-med-type" }, "Type"),
                         React.createElement(Select, { id: "new-med-type", value: newMedType, onChange: e => setNewMedType(e.target.value) },
-                            React.createElement('option', { value: MedicationType.Abortive }, "Abortive"),
+                            React.createElement('option', { value: MedicationType.Abortive }, "Acute"),
                             React.createElement('option', { value: MedicationType.Preventive }, "Preventive"),
                             React.createElement('option', { value: MedicationType.CGRPInhibitor }, "CGRP Inhibitor")
                         )
@@ -175,99 +176,6 @@ const MedicationLogModal = ({ isOpen, onClose, medications, onSave, onAddMedicat
     );
 };
 
-const MedicationIntakeEditModal = ({ isOpen, onClose, onSave, intake, medications }) => {
-    const [medicationId, setMedicationId] = React.useState('');
-    const [timestamp, setTimestamp] = React.useState('');
-    const [dose, setDose] = React.useState('');
-    const [effectiveness, setEffectiveness] = React.useState(null);
-
-
-    React.useEffect(() => {
-        if (isOpen && intake) {
-            setMedicationId(intake.medicationId);
-            setTimestamp(safeToDateTimeLocal(intake.timestamp));
-            setDose(intake.dose);
-            setEffectiveness(intake.effectiveness || null);
-        }
-    }, [isOpen, intake]);
-
-    const handleSave = () => {
-        if (!intake) return;
-        if (!medicationId || !timestamp) {
-            alert("Please fill out all fields.");
-            return;
-        }
-        try {
-            const intakeDate = new Date(timestamp);
-            if (isNaN(intakeDate.getTime())) throw new Error("Invalid timestamp");
-
-            onSave({
-                ...intake,
-                medicationId,
-                timestamp: intakeDate.toISOString(),
-                dose,
-                effectiveness,
-            });
-            onClose();
-        } catch (error) {
-            console.error("Error updating medication intake:", error);
-            alert("Could not save. Please ensure the date and time are valid.");
-        }
-    };
-    
-    const EFFECTIVENESS_OPTIONS = [
-        { id: null, label: 'Not Sure' },
-        { id: 'not_effective', label: 'Not Effective' },
-        { id: 'partially_effective', label: 'Partially Effective' },
-        { id: 'effective', label: 'Effective' },
-    ];
-
-    return React.createElement(Modal, { isOpen: isOpen, onClose: onClose, title: "Edit Medication Intake" },
-        React.createElement('div', { className: "space-y-4" },
-            React.createElement('div', null,
-                React.createElement(Label, { htmlFor: "med-select-edit" }, "Medication"),
-                React.createElement(Select, 
-                    {
-                        id: "med-select-edit", 
-                        value: medicationId, 
-                        onChange: e => {
-                            const newMedId = e.target.value;
-                            setMedicationId(newMedId);
-                            const selectedMed = medications.find(m => m.id === newMedId);
-                            setDose(selectedMed?.dose || '');
-                        }
-                    },
-                    medications.map(m => React.createElement('option', { key: m.id, value: m.id }, m.name))
-                )
-            ),
-            React.createElement('div', null,
-                React.createElement(Label, { htmlFor: "med-dose-edit" }, "Dose"),
-                React.createElement(Input, { id: "med-dose-edit", placeholder: "e.g., 50mg", value: dose, onChange: e => setDose(e.target.value) })
-            ),
-            React.createElement('div', null,
-                React.createElement(Label, { htmlFor: "med-time-edit" }, "Time Taken"),
-                React.createElement(Input, { type: "datetime-local", id: "med-time-edit", value: timestamp, onChange: e => setTimestamp(e.target.value) })
-            ),
-            React.createElement('div', { className: "space-y-3 pt-4 mt-4 border-t border-dark-border" },
-                React.createElement(Label, { className: "mb-2" }, "How effective was this dose?"),
-                 React.createElement('div', { className: 'flex flex-wrap gap-2' },
-                    EFFECTIVENESS_OPTIONS.map(option => (
-                        React.createElement(Chip, {
-                            key: option.id ?? 'not-sure',
-                            selected: effectiveness === option.id,
-                            onClick: () => setEffectiveness(option.id),
-                        }, option.label)
-                    ))
-                )
-            )
-        ),
-        React.createElement('div', { className: "mt-6 flex justify-end space-x-2" },
-            React.createElement(Button, { variant: "secondary", onClick: onClose }, "Cancel"),
-            React.createElement(Button, { onClick: handleSave }, "Save Changes")
-        )
-    );
-};
-
 const WelcomeHeader = ({ attacks }) => {
     const [message, setMessage] = React.useState(null);
 
@@ -282,7 +190,7 @@ const WelcomeHeader = ({ attacks }) => {
                         React.createElement('p', { className: "text-dark-text-secondary" }, "How are you feeling today?")
                     )
                 );
-                return; // No interval needed
+                return;
             }
 
             const latestAttack = attacks[0];
@@ -340,8 +248,6 @@ const WelcomeHeader = ({ attacks }) => {
                     )
                 );
             } else {
-                 // Fallback: This happens if there are attacks, but none have finished.
-                 // The 'ongoing attack' logic should catch this, but it's a safe default.
                  setMessage(
                     React.createElement(React.Fragment, null,
                         React.createElement('h2', { className: "text-2xl font-bold text-dark-text-primary" }, "Welcome Back"),
@@ -353,13 +259,12 @@ const WelcomeHeader = ({ attacks }) => {
 
         updateMessage();
         if (attacks.length > 0) {
-            const intervalId = setInterval(updateMessage, 60000); // Update every minute
+            const intervalId = setInterval(updateMessage, 60000);
             return () => clearInterval(intervalId);
         }
     }, [attacks]);
 
     return (
-        // Add a min-height to prevent layout shift while message is calculating
         React.createElement('div', { className: "min-h-[56px] flex flex-col justify-center flex-grow" },
             message
         )
@@ -369,23 +274,9 @@ const WelcomeHeader = ({ attacks }) => {
 const FunctionalDisabilityScore = ({ disabilityLogs, upsertDisabilityLog }) => {
     const todayDate = React.useMemo(() => toLocalDateString(new Date()), []);
     const todayLog = React.useMemo(() => disabilityLogs.find(l => l.date === todayDate), [disabilityLogs, todayDate]);
-    const creationAttemptedForDate = React.useRef(null);
 
-    React.useEffect(() => {
-        // If no log exists for today and we haven't already attempted to create one for this specific date,
-        // create a default log with a score of 0.
-        if (!todayLog && creationAttemptedForDate.current !== todayDate) {
-            creationAttemptedForDate.current = todayDate;
-            upsertDisabilityLog({
-                date: todayDate,
-                score: 0,
-            });
-        }
-    }, [todayDate, todayLog, upsertDisabilityLog]);
-
-    // To prevent UI flicker while the async log creation is in progress,
-    // default the score to 0 if no log is found for today.
-    const currentScore = todayLog?.score ?? 0;
+    // Use today's log score if it exists; null means no score selected yet
+    const currentScore = todayLog?.score ?? null;
 
     const scores = [
         { value: 0, label: "Full Function" },
@@ -402,23 +293,33 @@ const FunctionalDisabilityScore = ({ disabilityLogs, upsertDisabilityLog }) => {
         upsertDisabilityLog(newLog);
     };
 
+    const getDisabilityColor = (score) => {
+        if (score === 0) return '#58A6FF';  // blue
+        if (score === 1) return '#D29922';  // yellow
+        if (score === 2) return '#DB6D28';  // amber
+        return '#F85149';                     // red
+    };
+
     return React.createElement(Card, { title: "Functional Disability" },
         React.createElement('p', { className: "text-sm text-dark-text-secondary mb-4" }, "How much did your migraine impact your daily activities today? If you had an attack, please score based on its peak severity."),
         React.createElement('div', { className: "grid grid-cols-2 sm:grid-cols-4 gap-2" },
-            scores.map(({ value, label }) => (
-                React.createElement('button', {
+            scores.map(({ value, label }) => {
+                const dColor = getDisabilityColor(value);
+                const selected = currentScore === value;
+                return React.createElement('button', {
                     key: value,
                     onClick: () => handleScoreSelect(value),
-                    className: `p-3 rounded-lg text-center transition-colors ${
-                        currentScore === value
-                            ? 'bg-dark-primary text-dark-bg ring-2 ring-offset-2 ring-offset-dark-bg-secondary ring-dark-primary'
-                            : 'bg-dark-bg hover:bg-dark-border'
+                    style: { backgroundColor: dColor, color: '#fff' },
+                    className: `p-3 rounded-lg text-center transition-all ${
+                        selected
+                            ? 'ring-2 ring-white ring-offset-2 ring-offset-dark-bg-secondary scale-105'
+                            : 'hover:brightness-110'
                     }`
                 },
                     React.createElement('span', { className: "text-2xl font-bold" }, value),
                     React.createElement('span', { className: "block text-xs mt-1" }, label)
                 )
-            ))
+            })
         )
     );
 };
@@ -462,7 +363,6 @@ const Dashboard = ({ attacks, triggers, triggerLogs, upsertTriggerLog, addAttack
             values: dailyCheckinState,
         };
         upsertTriggerLog(newLog);
-        alert('Daily check-in saved!');
     };
 
     const handleLogAttackClick = () => {
@@ -485,7 +385,7 @@ const Dashboard = ({ attacks, triggers, triggerLogs, upsertTriggerLog, addAttack
                     React.createElement('div', { className: "flex flex-col sm:flex-row items-center justify-between gap-4" },
                         React.createElement(WelcomeHeader, { attacks: attacks }),
                         React.createElement('div', { className: "flex space-x-4 flex-shrink-0" },
-                             React.createElement(Button, { variant: "secondary", onClick: () => setIsMedLogModalOpen(true) }, "Log Medication"),
+                             React.createElement(Button, { variant: "secondary", onClick: () => setIsMedLogModalOpen(true) }, "Log Acute Medication"),
                             React.createElement(Button, { variant: "primary", onClick: handleLogAttackClick }, "Log Migraine Attack")
                         )
                     )
@@ -507,12 +407,12 @@ const Dashboard = ({ attacks, triggers, triggerLogs, upsertTriggerLog, addAttack
                     React.createElement('div', { className: "mt-6 flex justify-end" },
                         React.createElement(Button, { onClick: handleSaveCheckin }, "Save Check-in")
                     )
-                )
+                ),
+                React.createElement(FunctionalDisabilityScore, { disabilityLogs: disabilityLogs, upsertDisabilityLog: upsertDisabilityLog })
             ),
             React.createElement('div', { className: "lg:col-span-1 space-y-6" },
                 React.createElement(ThirtyDayStats, { attacks: attacks }),
                 React.createElement(MOHGauge, { medicationIntakes: medicationIntakes, medications: medications, mohRules: mohRules }),
-                React.createElement(FunctionalDisabilityScore, { disabilityLogs: disabilityLogs, upsertDisabilityLog: upsertDisabilityLog }),
                 React.createElement(Card, { title: "Recent Attacks" },
                     attacks.length > 0 ? (
                         React.createElement('ul', { className: "space-y-3" },
@@ -520,7 +420,7 @@ const Dashboard = ({ attacks, triggers, triggerLogs, upsertTriggerLog, addAttack
                                 React.createElement('li', { key: attack.id, className: "p-3 bg-dark-bg rounded-md flex justify-between items-center gap-2" },
                                     React.createElement('div', null,
                                         React.createElement('p', { className: "font-semibold" }, safeFormatDateTime(attack.startTime)),
-                                        React.createElement('p', { className: "text-sm text-dark-text-secondary" }, `Severity: ${attack.severity}/10`)
+                                        React.createElement('p', { className: "text-sm text-dark-text-secondary" }, `Pain: ${attack.severity}/10`)
                                     ),
                                     React.createElement('div', { className: "flex space-x-2 flex-shrink-0" },
                                         React.createElement(Button, { variant: "secondary", className: "px-2 py-1 text-sm", onClick: () => setEditingAttack(attack) }, "Edit")
@@ -563,9 +463,13 @@ const Dashboard = ({ attacks, triggers, triggerLogs, upsertTriggerLog, addAttack
                   onSave: (attack) => {
                     const attackDate = toLocalDateString(new Date(attack.startTime));
                     const latestTriggerLog = triggerLogs.find(log => log.date === attackDate);
+                    // Merge saved triggers with currently-unsaved check-in state for today
+                    const savedValues = latestTriggerLog?.values || {};
+                    const todaysUnsaved = attackDate === todayDate ? dailyCheckinState : {};
+                    const mergedTriggers = { ...savedValues, ...todaysUnsaved };
                     const attackWithTriggers = {
                         ...attack,
-                        triggers: latestTriggerLog?.values || {},
+                        triggers: mergedTriggers,
                     };
                     addAttack(attackWithTriggers);
                     setIsAttackModalOpen(false);

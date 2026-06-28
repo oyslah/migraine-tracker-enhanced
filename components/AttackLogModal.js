@@ -96,9 +96,8 @@ const AttackLogModal = ({ isOpen, onClose, onSave, attack, symptoms: availableSy
     const modalId = React.useMemo(() => (attack?.id || 'new'), [attack]);
     
     const severityDescriptions = {
-        0: 'No pain',
-        1: 'Hurts a little',
-        2: 'Hurts a little',
+        1: 'Very mild',
+        2: 'Very mild',
         3: 'Mild',
         4: 'Mild',
         5: 'Moderate',
@@ -109,6 +108,14 @@ const AttackLogModal = ({ isOpen, onClose, onSave, attack, symptoms: availableSy
         10: 'Excruciating'
     };
     const severityDescription = severityDescriptions[severity];
+
+    const getPainColor = (level) => {
+        if (level <= 2) return '#58A6FF';    // blue
+        if (level <= 4) return '#3FB950';    // green
+        if (level <= 6) return '#D29922';    // amber
+        if (level <= 8) return '#DB6D28';    // orange
+        return '#F85149';                      // red
+    };
 
     return React.createElement(Modal, { isOpen: isOpen, onClose: onClose, title: attack ? 'Edit Migraine Attack' : 'Log Migraine Attack' },
         React.createElement('div', { className: "space-y-4" },
@@ -123,27 +130,30 @@ const AttackLogModal = ({ isOpen, onClose, onSave, attack, symptoms: availableSy
                 )
             ),
             React.createElement('div', null,
-                React.createElement(Label, { id: `severity-label-${modalId}` }, "Severity"),
+                React.createElement(Label, { id: `pain-label-${modalId}` }, "Pain Level"),
                 React.createElement('div', {
                     role: "group",
-                    'aria-labelledby': `severity-label-${modalId}`,
+                    'aria-labelledby': `pain-label-${modalId}`,
                     className: "flex flex-wrap gap-2 mt-2"
                 },
-                    Array.from({ length: 11 }, (_, i) => i).map(num => (
-                        React.createElement('button', {
+                    Array.from({ length: 10 }, (_, i) => i + 1).map(num => {
+                        const color = getPainColor(num);
+                        const isSelected = severity === num;
+                        return React.createElement('button', {
                             key: num,
                             type: 'button',
-                            'aria-pressed': severity === num,
+                            'aria-pressed': isSelected,
                             onClick: () => setSeverity(num),
-                            className: `w-10 h-10 flex items-center justify-center rounded-md font-bold text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-bg-secondary ${
-                                severity === num
-                                    ? 'bg-dark-primary text-dark-bg ring-dark-primary'
-                                    : 'bg-dark-bg hover:bg-dark-border text-dark-text-primary'
+                            style: { backgroundColor: color, color: '#fff' },
+                            className: `w-10 h-10 flex items-center justify-center rounded-md font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-bg-secondary ${
+                                isSelected
+                                    ? 'ring-2 ring-white scale-110'
+                                    : 'hover:brightness-110'
                             }`
                         },
                         num
                         )
-                    ))
+                    })
                 ),
                 React.createElement('p', {
                     'aria-live': "polite",

@@ -3,21 +3,41 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 const PREFS_KEY = 'migraine_notification_prefs';
 
 export const DEFAULT_PREFS = {
-  preventativeEnabled: false,
+  morningReminderEnabled: false,
   morningTime: '08:00',
+  eveningReminderEnabled: false,
   eveningTime: '20:00',
   attackCheckinEnabled: false,
   attackCheckinInterval: 4, // hours
   attackCheckinMessage: "You've been having a migraine attack for {duration}. Please log if anything has changed.",
-  triggerReminderEnabled: false,
-  triggerReminderTime: '20:00',
-  triggerReminderMessage: "Don't forget to log your daily triggers!",
+  dailyLoginEnabled: false,
+  dailyLoginTime: '20:00',
+  dailyLoginMessage: "Time to check in! Log today's triggers and disability score.",
 };
 
 export const loadPrefs = () => {
   try {
     const stored = localStorage.getItem(PREFS_KEY);
-    return stored ? { ...DEFAULT_PREFS, ...JSON.parse(stored) } : { ...DEFAULT_PREFS };
+    let prefs = stored ? { ...DEFAULT_PREFS, ...JSON.parse(stored) } : { ...DEFAULT_PREFS };
+    // Migrate old keys to new
+    if (prefs.preventativeEnabled !== undefined) {
+      prefs.morningReminderEnabled = prefs.preventativeEnabled;
+      prefs.eveningReminderEnabled = prefs.preventativeEnabled;
+      delete prefs.preventativeEnabled;
+    }
+    if (prefs.triggerReminderEnabled !== undefined) {
+      prefs.dailyLoginEnabled = prefs.triggerReminderEnabled;
+      delete prefs.triggerReminderEnabled;
+    }
+    if (prefs.triggerReminderTime !== undefined) {
+      prefs.dailyLoginTime = prefs.triggerReminderTime;
+      delete prefs.triggerReminderTime;
+    }
+    if (prefs.triggerReminderMessage !== undefined) {
+      prefs.dailyLoginMessage = prefs.triggerReminderMessage;
+      delete prefs.triggerReminderMessage;
+    }
+    return prefs;
   } catch {
     return { ...DEFAULT_PREFS };
   }
@@ -54,7 +74,7 @@ const cancelByTag = async (tag) => {
 export const schedulePreventativeReminders = async (prefs, medications) => {
   await cancelByTag('preventative-reminder');
 
-  if (!prefs.preventativeEnabled) return;
+  if (!prefs.morningReminderEnabled && !prefs.eveningReminderEnabled) return;
 
   const preventativeMeds = medications.filter(m => m.type === 'preventive');
   const medNames = preventativeMeds.map(m => m.name).join(', ');
@@ -62,10 +82,13 @@ export const schedulePreventativeReminders = async (prefs, medications) => {
     ? `Time to take: ${medNames}`
     : 'Time to take your preventative medication.';
 
-  const times = [
-    { key: 'morning', time: prefs.morningTime },
-    { key: 'evening', time: prefs.eveningTime },
-  ].filter(t => t.time);
+  const times = [];
+  if (prefs.morningReminderEnabled && prefs.morningTime) {
+    times.push({ key: 'morning', time: prefs.morningTime });
+  }
+  if (prefs.eveningReminderEnabled && prefs.eveningTime) {
+    times.push({ key: 'evening', time: prefs.eveningTime });
+  }
 
   for (const { key, time } of times) {
     const [hours, minutes] = time.split(':').map(Number);
@@ -144,24 +167,24 @@ export const scheduleAttackCheckin = async (prefs, attacks) => {
   }
 };
 
-export const scheduleTriggerReminder = async (prefs) => {
-  await cancelByTag('trigger-reminder');
+export const scheduleDailyLoginReminder = async (prefs) => {
+  await cancelByTag('daily-login');
 
-  if (!prefs.triggerReminderEnabled) return;
+  if (!prefs.dailyLoginEnabled) return;
 
-  const [hours, minutes] = (prefs.triggerReminderTime || '20:00').split(':').map(Number);
+  const [hours, minutes] = (prefs.dailyLoginTime || '20:00').split(':').map(Number);
 
   try {
     await LocalNotifications.schedule({
       notifications: [{
-        id: `trig${hours}${minutes}`.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0),
-        title: '📋 Daily Trigger Check-in',
-        body: prefs.triggerReminderMessage || "Don't forget to log your daily triggers!",
+        id: `dll${hours}${minutes}`.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0),
+        title: '📋 Daily Check-in',
+        body: prefs.dailyLoginMessage || "Time to check in! Log today's triggers and disability score.",
         schedule: {
           every: 'day',
           on: { hour: hours, minute: minutes },
         },
-        extra: { tag: 'trigger-reminder' },
+        extra: { tag: 'daily-login' },
       }],
     });
   } catch {
@@ -172,5 +195,5 @@ export const scheduleTriggerReminder = async (prefs) => {
 export const scheduleAll = async (prefs, medications, attacks) => {
   await schedulePreventativeReminders(prefs, medications);
   await scheduleAttackCheckin(prefs, attacks);
-  await scheduleTriggerReminder(prefs);
+  await scheduleDailyLoginReminder(prefs);
 };
